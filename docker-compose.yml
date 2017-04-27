@@ -1,0 +1,24 @@
+version: "2"
+services:
+  poller:
+    build: .
+    networks:
+      - poller-network
+  db:
+    image: ibmcom/db2express-c
+    ports:
+      - "50000:50000"
+    command: db2start
+    environment:
+      - DB2INST1_PASSWORD=skookumpassword
+      - LICENSE=accept
+    volumes:
+      - ./data:/share
+      - ./scripts:/home/db2inst1/scripts
+      - .:/go/src/app
+    networks:
+      - poller-network
+networks:
+  poller-network:
+    driver: bridge
+
