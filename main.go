@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -14,11 +16,15 @@ import (
 
 var counter = 0
 var port *int
+var connString string
 
 func init() {
 	fmt.Println("Firing it up ***")
 	port = flag.Int("port", 9090, "port for web server")
-	connectToDb()
+	connString = os.Getenv("DB2_CONNECTION_STRING")
+	if connString == "" {
+		log.Fatalln("DB2_CONNECTION_STRING must be set in the environment")
+	}
 
 }
 
@@ -50,14 +56,16 @@ func Poll(c chan<- int, db *sql.DB) {
 
 func connectToDb() *sql.DB {
 	fmt.Println("*** connnecting to effing db ***")
-	db, err := sql.Open("db2-cli", "DATABASE=geg_test; HOSTNAME=localhost; PORT=50000; PROTOCOL=TCPIP; UID=db2inst1; PWD=skookumpassword;")
+	fmt.Println(connString)
+	db, err := sql.Open("db2-cli", connString)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	fmt.Println("Connected!")
 	return db
 }
 
-func startWebServer() {
+func startWebServer(db *sql.DB) {
 
 	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Running on port ", *port)
@@ -67,8 +75,35 @@ func startWebServer() {
 		fmt.Fprintln(w, "So far I've done this ", counter, " times.")
 	})
 
-	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			fmt.Println("** Executing tempalte")
+			t, err := template.ParseFiles("./html/new_order.tmpl")
+			if err != nil {
+				fmt.Println("** Template error: ", err)
+			}
+			err = t.Execute(w, nil)
+			if err != nil {
+				fmt.Println("** Template error: ", err)
+			}
+			return
+		}
+		r.ParseForm()
+		brand := r.FormValue("brand")
+		store_id := r.FormValue("store_id")
+		order_id := r.FormValue("order_id")
+		customer := r.FormValue("customer")
+		date := time.Now()
 
+		result, err := db.Exec("insert into bopis_orders (brand, store_id, order_id, customer_name, order_date) values (?,?,?,?,?)", brand, store_id, order_id, customer, date)
+		if err != nil {
+			fmt.Println("**** insert error: ", err)
+		}
+		fmt.Println(result)
+		http.Redirect(w, r, "/", 302)
+	})
+
+	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }
 
 func Processor(c <-chan int, db *sql.DB) {
@@ -88,5 +123,5 @@ func main() {
 	c := make(chan int)
 	go Poll(c, db)
 	go Processor(c, db)
-	startWebServer()
+	startWebServer(db)
 }

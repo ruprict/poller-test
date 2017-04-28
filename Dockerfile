@@ -1,4 +1,4 @@
-FROM golang:1.6
+FROM golang:1.7.5
 
 RUN apt-get -y update
 RUN apt-get -y install libxml2-dev

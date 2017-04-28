@@ -2,6 +2,8 @@ version: "2"
 services:
   poller:
     build: .
+    environment:
+      - DB2_CONNECTION_STRING=DATABASE=geg_test; HOSTNAME=db; PORT=50000; PROTOCOL=TCPIP; UID=db2inst1; PWD=skookumpassword;
     networks:
       - poller-network
   db:
