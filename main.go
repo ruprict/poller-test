@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "bitbucket.org/phiggins/db2cli"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 var counter = 0
@@ -39,10 +39,10 @@ func Poll(c chan<- int, db *sql.DB) {
 		}
 		for rows.Next() {
 			var id int
-			var brand, store_id, order_id, customer string
+			var brand, shipnode, order_id, customer string
 			var order_date time.Time
 			var order_ack bool
-			err = rows.Scan(&id, &brand, &store_id, &order_id, &customer, &order_date, &order_ack)
+			err = rows.Scan(&id, &brand, &shipnode, &order_id, &customer, &order_date, &order_ack)
 			if err != nil {
 				fmt.Println("Error scanning row: ", err)
 			}
@@ -57,7 +57,7 @@ func Poll(c chan<- int, db *sql.DB) {
 func connectToDb() *sql.DB {
 	fmt.Println("*** connnecting to effing db ***")
 	fmt.Println(connString)
-	db, err := sql.Open("db2-cli", connString)
+	db, err := sql.Open("mssql", connString)
 	if err != nil {
 		log.Fatalln(err)
 	}
